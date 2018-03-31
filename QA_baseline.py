@@ -457,7 +457,7 @@ if __name__ == "__main__":
                     if not find:
                         wrong += 1
                         write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 0)
-
+                print('For one paragraph:')
                 print('count of exact right:', right1)
                 print('count of right with type 1 error:', right1 + right2)
                 print('count of right with type 2 error:', right1 + right3)
@@ -491,38 +491,75 @@ if __name__ == "__main__":
                     print('answer retrival accuracy for rough right:',
                           round( ((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
                                   right1 + right2 + right3 + wrong)))
+            print('For one article:')
+            print('count of exact right:', right1)
+            print('count of right with type 1 error:', right1 + right2)
+            print('count of right with type 2 error:', right1 + right3)
+            print('count of rough right:', right1 + right2 + right3)
+            print('count of wrong:', wrong)
 
+            print('proportion accuracy for exact right:',
+                  round(right1 / (right1 + right2 + right3 + wrong)))
+            print('proportion accuracy for right with type 1 error:',
+                  round((right1 + right2) / (right1 + right2 + right3 + wrong)))
+            print('proportion accuracy for right with type 2 error:',
+                  round((right1 + right3) / (right1 + right2 + right3 + wrong)))
+            print('proportion accuracy for rough right:',
+                  round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong)))
+
+            if sum_2 != 0:
+                print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list)))
+                print('answer accuracy for right with type 1 error:',
+                      round((sum(quality_2_list) + right1) / (len(quality_2_list) + right1) * (right1 + right2) / (
+                              right1 + right2 + right3 + wrong)))
+            else:
+                print('sum_2=0')
+            if sum_3 != 0:
+                print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list)))
+                print('answer accuracy for right with type 2 error:',
+                      round((sum(quality_3_list) + right1) / (len(quality_3_list) + right1) * (right1 + right3) / (
+                              right1 + right2 + right3 + wrong)))
+            else:
+                print('sum_3=0')
+            if sum_2 != 0 and sum_3 != 0:
+                print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3))
+                print('answer retrival accuracy for rough right:',
+                      round(((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
+                              right1 + right2 + right3 + wrong)))
+        print('For whole document:')
         print('count of exact right:', right1)
         print('count of right with type 1 error:', right1 + right2)
         print('count of right with type 2 error:', right1 + right3)
         print('count of rough right:', right1 + right2 + right3)
         print('count of wrong:', wrong)
 
-        print('sentence retrival accuracy for exact right:',
-              right1 / (right1 + right2 + right3 + wrong))
-        print('sentence retrival accuracy for right with type 1 error:',
-              (right1 + right2) / (right1 + right2 + right3 + wrong))
-        print('sentence retrival accuracy for right with type 2 error:',
-              (right1 + right3) / (right1 + right2 + right3 + wrong))
-        print('sentence retrival accuracy for rough right:',
-              (right1 + right2 + right3) / (right1 + right2 + right3 + wrong))
+        print('proportion accuracy for exact right:',
+              round(right1 / (right1 + right2 + right3 + wrong)))
+        print('proportion accuracy for right with type 1 error:',
+              round((right1 + right2) / (right1 + right2 + right3 + wrong)))
+        print('proportion accuracy for right with type 2 error:',
+              round((right1 + right3) / (right1 + right2 + right3 + wrong)))
+        print('proportion accuracy for rough right:',
+              round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong)))
 
-        print('answer accuracy for exact right:',
-              right1 / (right1 + right2 + right3 + wrong))
         if sum_2 != 0:
-            print('accuracy of type 1 error:', right_2 / sum_2)
+            print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list)))
             print('answer accuracy for right with type 1 error:',
-                  (right_2 / sum_2) * (right1 + right2) / (right1 + right2 + right3 + wrong))
+                  round((sum(quality_2_list) + right1) / (len(quality_2_list) + right1) * (right1 + right2) / (
+                          right1 + right2 + right3 + wrong)))
         else:
             print('sum_2=0')
         if sum_3 != 0:
-            print('accuracy of type 2 error:', right_3 / sum_3)
+            print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list)))
             print('answer accuracy for right with type 2 error:',
-                  (right_3 / sum_3) * (right1 + right3) / (right1 + right2 + right3 + wrong))
+                  round((sum(quality_3_list) + right1) / (len(quality_3_list) + right1) * (right1 + right3) / (
+                          right1 + right2 + right3 + wrong)))
         else:
             print('sum_3=0')
         if sum_2 != 0 and sum_3 != 0:
-            print('overall accuracy:', (1 + right_2 / sum_2 + right_3 / sum_3) / 3)
+            print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3))
             print('answer retrival accuracy for rough right:',
-                  ((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
-                          right1 + right2 + right3 + wrong))
+                  round(((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
+                          right1 + right2 + right3 + wrong)))
+
+
