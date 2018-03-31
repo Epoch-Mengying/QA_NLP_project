@@ -350,6 +350,15 @@ def retrieve_answer(paragraph, questions, parser):
 
     return answer_list, aft_length_list
 
+def write_line(question,answer,our_answer,aft_length,correct):
+    print('right answer:', answer)
+    print('our answer:', our_answer)
+    print('question:', question)
+    print('candidate number:', aft_length, '\n')
+
+    row = [question,answer,our_answer,aft_length,correct]
+    writer.writerow(row)
+
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -357,13 +366,12 @@ if __name__ == "__main__":
     # for parse:
     
 ### Alicia
-    #path_to_models_jar = '/Users/G_bgyl/si630/project/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar'  # change to your path
-    #path_to_jar = '/Users/G_bgyl/si630/project/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar'  # change to your path
+    path_to_models_jar = '/Users/G_bgyl/si630/project/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar'  # change to your path
+    path_to_jar = '/Users/G_bgyl/si630/project/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar'  # change to your path
     
 ### Mengying    
-    path_to_models_jar = "/Users/Mengying/Desktop/SI630 NLP/FinalProject/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar" # change to your path
-
-    path_to_jar = "/Users/Mengying/Desktop/SI630 NLP/FinalProject/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar" # change to your path
+    # path_to_models_jar = "/Users/Mengying/Desktop/SI630 NLP/FinalProject/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar" # change to your path
+    # path_to_jar = "/Users/Mengying/Desktop/SI630 NLP/FinalProject/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar" # change to your path
 
     
 ### CAEN    
@@ -372,12 +380,13 @@ if __name__ == "__main__":
 
     parser = StanfordParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
 
-    train_dict = read_data("/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json")
+    train_dict = read_data("/Users/G_bgyl/si630/project/dev-v1.1.json")
+
 
     # for test output:
     test_output = []
 
-    right = 0
+    right1,right2,right3 = 0,0,0
     wrong = 0
     with open('baseline_dev_result.csv', 'w') as baseline_dev_result: # , open('untrack_question.csv', 'w') as untrack_question
         writer = csv.writer(baseline_dev_result)
@@ -406,16 +415,26 @@ if __name__ == "__main__":
 
                     if answers[i]:
                         if answer_list[i]:
-                            if answers[i] in answer_list[i] or answer_list[i] in answers[i] or answer_list[i] == answers[i]:
-                                right += 1
+                            # exactly correct
+                            if answer_list[i] == answers[i]:
+                                right1 += 1
                                 print('Yay!')
-                                print('right answer:', answers[i])
-                                print('our answer:', answer_list[i])
-                                print('question:', questions[i])
-                                print('candidate number:', aft_length_list[i], '\n')
                                 find = True
-                                row = [questions[i],answers[i],answer_list[i],aft_length_list[i],1]
-                                writer.writerow(row)
+                                write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 1)
+                                continue
+                            # our answer contains correct answer
+                            elif answers[i] in answer_list[i]:
+                                right2 += 1
+                                print('Yay!')
+                                find = True
+                                write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 1)
+                                continue
+                            # correct answer contains our answer
+                            elif answers[i] in answer_list[i] or answer_list[i] in answers[i] or answer_list[i] == answers[i]:
+                                right3 += 1
+                                print('Yay!')
+                                find = True
+                                write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 1)
                                 continue
                         else:
                             print('answer_list[',i,'] went wrong')
@@ -426,18 +445,33 @@ if __name__ == "__main__":
 
                     if not find:
                         wrong += 1
-                        print('right answer:', answers[i])
-                        print('our answer:', answer_list[i])
-                        print('question:',questions[i])
-                        print('candidate number:',aft_length_list[i],'\n')
-                        row = [questions[i], answers[i], answer_list[i],aft_length_list[i], 0]
-                        writer.writerow(row)
-            exit()
-            print('count of right:',right)
-            print('count of wrong:',wrong)
-            print('sentence retrival accuracy for single article:', right / (right + wrong))
+                        write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 0)
 
-        print('count of right:',right)
-        print('count of wrong:',wrong)
-        print('sentence retrival accuracy for whole dev data:', right / (right + wrong))
+            print('count of exact right:', right1)
+            print('count of right with type 1 error:', right1 + right2)
+            print('count of right with type 2 error:', right1 + right3)
+            print('count of rough right:', right1 + right2 + right3)
+            print('count of wrong:', wrong)
+            print('sentence retrival accuracy for single article for exact right:',
+                  right1 / (right1 + right2 + right3 + wrong))
+            print('sentence retrival accuracy for single article for right with type 1 error:',
+                  right1 + right2 / (right1 + right2 + right3 + wrong))
+            print('sentence retrival accuracy for single article for right with type 2 error:',
+                  right1 + right3 / (right1 + right2 + right3 + wrong))
+            print('sentence retrival accuracy for single article for rough right:',
+                  right1 + right2 + right3 / (right1 + right2 + right3 + wrong))
+
+        print('count of exact right:', right1)
+        print('count of right with type 1 error:', right1 + right2)
+        print('count of right with type 2 error:', right1 + right3)
+        print('count of rough right:', right1 + right2 + right3)
+        print('count of wrong:', wrong)
+        print('sentence retrival accuracy for whole csv for exact right:',
+              right1 / (right1 + right2 + right3 + wrong))
+        print('sentence retrival accuracy for whole csv for right with type 1 error:',
+              right1 + right2 / (right1 + right2 + right3 + wrong))
+        print('sentence retrival accuracy for whole csv for right with type 2 error:',
+              right1 + right3 / (right1 + right2 + right3 + wrong))
+        print('sentence retrival accuracy for whole csv for rough right:',
+              right1 + right2 + right3 / (right1 + right2 + right3 + wrong))
 
