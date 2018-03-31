@@ -193,7 +193,7 @@ def prepare_candidates(question, sentence, atype, parser):
     stop_words.extend(['.', ','])
 
     filtered_question = [w for w in question_token_list if not w in stop_words]
-    print ("Q_token: ", filtered_question)
+    # print ("Q_token: ", filtered_question)
 
     #sentence = "It is a replica of the grotto at Lourdes, France where the Virgin Mary reputedly appeared to Saint Bernadette Soubirous in 1858."
     if len(sentence) == 0: return None
@@ -208,7 +208,7 @@ def prepare_candidates(question, sentence, atype, parser):
     for phrase in top_level:
         top_candidates.append(" ".join(phrase.leaves()))
     top_nrrw = [fruit for fruit in top_candidates if fruit not in ['it', "It"]]
-    print (">> Top: ",top_nrrw)
+    # print (">> Top: ",top_nrrw)
 
 
 
@@ -229,7 +229,7 @@ def prepare_candidates(question, sentence, atype, parser):
                 rm.append(bottom_candidates[j])
 
     bottom_nrrw = [fruit for fruit in bottom_candidates if fruit not in rm]  # narrowed candidates
-    print (">> Bottom: ", bottom_nrrw)
+    # print (">> Bottom: ", bottom_nrrw)
   
   
   ##### Find Answer
@@ -244,7 +244,7 @@ def prepare_candidates(question, sentence, atype, parser):
                 final_candidates.remove(cand)
                 break
     
-    print (">>TOPfinal_candidates: ", final_candidates)
+    # print (">>TOPfinal_candidates: ", final_candidates)
     
     ## find from bottom level if top level is too broad
     if len(final_candidates) == 0:
@@ -256,7 +256,7 @@ def prepare_candidates(question, sentence, atype, parser):
                 if token in cand: 
                     final_candidates.remove(cand)
                     break
-        print (">>BOTTOMfinal_candidates: ", final_candidates)
+        # print (">>BOTTOMfinal_candidates: ", final_candidates)
     
     ### if didn't find anything, return none
     if len(final_candidates) == 0: return None
@@ -387,6 +387,8 @@ if __name__ == "__main__":
     test_output = []
 
     right1,right2,right3 = 0,0,0
+    sum_2,right_2,sum_3,right_3=0,0,0,0
+    quality_2_list,quality_3_list = [],[]
     wrong = 0
     with open('baseline_dev_result.csv', 'w') as baseline_dev_result: # , open('untrack_question.csv', 'w') as untrack_question
         writer = csv.writer(baseline_dev_result)
@@ -418,6 +420,7 @@ if __name__ == "__main__":
                             # exactly correct
                             if answer_list[i] == answers[i]:
                                 right1 += 1
+
                                 print('Yay!')
                                 find = True
                                 write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 1)
@@ -425,16 +428,24 @@ if __name__ == "__main__":
                             # our answer contains correct answer
                             elif answers[i] in answer_list[i]:
                                 right2 += 1
+                                right_2 = len(answers[i].split())
+                                sum_2 = len(answer_list[i].split())
+                                quality_2 = right_2/ sum_2
+                                quality_2_list.append(quality_2)
                                 print('Yay!')
                                 find = True
-                                write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 1)
+                                write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 2)
                                 continue
                             # correct answer contains our answer
-                            elif answers[i] in answer_list[i] or answer_list[i] in answers[i] or answer_list[i] == answers[i]:
+                            elif answer_list[i] in answers[i]:
                                 right3 += 1
+                                right_3 = len(answer_list[i].split())
+                                sum_3 = len(answers[i].split())
+                                quality_3 = right_3 / sum_3
+                                quality_3_list.append(quality_3)
                                 print('Yay!')
                                 find = True
-                                write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 1)
+                                write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 3)
                                 continue
                         else:
                             print('answer_list[',i,'] went wrong')
@@ -447,31 +458,71 @@ if __name__ == "__main__":
                         wrong += 1
                         write_line(questions[i], answers[i], answer_list[i], aft_length_list[i], 0)
 
-            print('count of exact right:', right1)
-            print('count of right with type 1 error:', right1 + right2)
-            print('count of right with type 2 error:', right1 + right3)
-            print('count of rough right:', right1 + right2 + right3)
-            print('count of wrong:', wrong)
-            print('sentence retrival accuracy for single article for exact right:',
-                  right1 / (right1 + right2 + right3 + wrong))
-            print('sentence retrival accuracy for single article for right with type 1 error:',
-                  right1 + right2 / (right1 + right2 + right3 + wrong))
-            print('sentence retrival accuracy for single article for right with type 2 error:',
-                  right1 + right3 / (right1 + right2 + right3 + wrong))
-            print('sentence retrival accuracy for single article for rough right:',
-                  right1 + right2 + right3 / (right1 + right2 + right3 + wrong))
+                print('count of exact right:', right1)
+                print('count of right with type 1 error:', right1 + right2)
+                print('count of right with type 2 error:', right1 + right3)
+                print('count of rough right:', right1 + right2 + right3)
+                print('count of wrong:', wrong)
+
+                print('proportion accuracy for exact right:',
+                      round(right1 / (right1 + right2 + right3 + wrong)))
+                print('proportion accuracy for right with type 1 error:',
+                      round((right1 + right2) / (right1 + right2 + right3 + wrong)))
+                print('proportion accuracy for right with type 2 error:',
+                      round((right1 + right3) / (right1 + right2 + right3 + wrong)))
+                print('proportion accuracy for rough right:',
+                      round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong)))
+
+                if sum_2 !=0:
+                    print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list)))
+                    print('answer accuracy for right with type 1 error:',
+                          round((sum(quality_2_list) + right1) / (len(quality_2_list) + right1) * (right1 + right2) / (right1 + right2 + right3 + wrong)))
+                else:
+                    print('sum_2=0')
+                if sum_3 != 0:
+                    print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list)))
+                    print('answer accuracy for right with type 2 error:',
+                          round( (sum(quality_3_list)+ right1)/(len(quality_3_list) +right1)* (right1 + right3) / (right1 + right2 + right3 + wrong)))
+                else:
+                    print('sum_3=0')
+                if sum_2 != 0 and sum_3 != 0:
+
+                    print('overall quality:',round((1 + right_2 / sum_2 + right_3 / sum_3)/3))
+                    print('answer retrival accuracy for rough right:',
+                          round( ((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
+                                  right1 + right2 + right3 + wrong)))
 
         print('count of exact right:', right1)
         print('count of right with type 1 error:', right1 + right2)
         print('count of right with type 2 error:', right1 + right3)
         print('count of rough right:', right1 + right2 + right3)
         print('count of wrong:', wrong)
-        print('sentence retrival accuracy for whole csv for exact right:',
-              right1 / (right1 + right2 + right3 + wrong))
-        print('sentence retrival accuracy for whole csv for right with type 1 error:',
-              right1 + right2 / (right1 + right2 + right3 + wrong))
-        print('sentence retrival accuracy for whole csv for right with type 2 error:',
-              right1 + right3 / (right1 + right2 + right3 + wrong))
-        print('sentence retrival accuracy for whole csv for rough right:',
-              right1 + right2 + right3 / (right1 + right2 + right3 + wrong))
 
+        print('sentence retrival accuracy for exact right:',
+              right1 / (right1 + right2 + right3 + wrong))
+        print('sentence retrival accuracy for right with type 1 error:',
+              (right1 + right2) / (right1 + right2 + right3 + wrong))
+        print('sentence retrival accuracy for right with type 2 error:',
+              (right1 + right3) / (right1 + right2 + right3 + wrong))
+        print('sentence retrival accuracy for rough right:',
+              (right1 + right2 + right3) / (right1 + right2 + right3 + wrong))
+
+        print('answer accuracy for exact right:',
+              right1 / (right1 + right2 + right3 + wrong))
+        if sum_2 != 0:
+            print('accuracy of type 1 error:', right_2 / sum_2)
+            print('answer accuracy for right with type 1 error:',
+                  (right_2 / sum_2) * (right1 + right2) / (right1 + right2 + right3 + wrong))
+        else:
+            print('sum_2=0')
+        if sum_3 != 0:
+            print('accuracy of type 2 error:', right_3 / sum_3)
+            print('answer accuracy for right with type 2 error:',
+                  (right_3 / sum_3) * (right1 + right3) / (right1 + right2 + right3 + wrong))
+        else:
+            print('sum_3=0')
+        if sum_2 != 0 and sum_3 != 0:
+            print('overall accuracy:', (1 + right_2 / sum_2 + right_3 / sum_3) / 3)
+            print('answer retrival accuracy for rough right:',
+                  ((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
+                          right1 + right2 + right3 + wrong))
