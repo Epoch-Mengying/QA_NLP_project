@@ -2,7 +2,7 @@
 # Mengying Zhang, Alicia Ge
 ## Neural Network Method
 
-
+##### Largely inspired from https://www.oreilly.com/ideas/question-answering-with-tensorflow
 
 # Library
 import json
