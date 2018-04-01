@@ -19,8 +19,8 @@ import random
 
 # global variables listed here
 QA_TYPE_MATCH = {'what': 'NP', 'when': 'CD', 'where': 'NP', 'whom': 'NP', 'why': 'NP',
-                 'who': 'NP', 'which': 'NP', 'whose': 'NP', 'name': 'NP', 'example': 'NP', 'how many': 'CD',
-                 'how often': 'CD','what year':'CD','location':'NP'}  # a dictionary maps question type to answer type
+                 'who': 'NP', 'which': 'NP', 'whose': 'NP', 'name': 'NP', 'example': 'NP', 'how many': 'CD','how much': 'CD',
+                 'what percentage': 'CD','how often': 'CD','what year':'CD','location':'NP'}  # a dictionary maps question type to answer type
 tokenizer = RegexpTokenizer(r'\w+')
 random.seed(2018)
 
@@ -157,14 +157,14 @@ def answer_type(token_question):
 
 def ExtractPhrases(myTree, phrase, bot = True):
     '''
-       Input: 
+       Input:
          Tree: a parsed tree
          Phrase: tag for the string phrase (sub-tree) to extract, eg. Np
          bot: weather to extract the bottom level of the tree, if false, it only retrieves from top level
        Output: List of deep copies;  Recursive
     ## Adapted from https://www.winwaed.com/blog/2012/01/20/extracting-noun-phrases-from-parsed-trees/
-    ''' 
-   
+    '''
+
     myPhrases = []
 
     if (myTree.label() == phrase):
@@ -178,7 +178,7 @@ def ExtractPhrases(myTree, phrase, bot = True):
     return myPhrases
 
 
-    
+
 
 def prepare_candidates(question, sentence, atype, parser):
     '''
@@ -199,81 +199,79 @@ def prepare_candidates(question, sentence, atype, parser):
     result = list(parser.raw_parse(sentence))
 
     tree = result[0]
-  
+
   ##### for top level
     top_level = ExtractPhrases(tree, atype, bot = False)
     top_candidates = []
     for phrase in top_level:
         top_candidates.append(" ".join(phrase.leaves()))
-    top_nrrw = [fruit for fruit in top_candidates if fruit not in ['it', "It"]]
+    top_nrrw = [fruit for fruit in top_candidates if fruit not in ['it', "It", "there", "this", "This", "There"]]
     #print (">> Top: ",top_nrrw)
 
 
-  
-  
+
+  ##### for bottom level
+    bottom_level = ExtractPhrases(tree, atype)
+    bottom_candidates = []
+    for phrase in bottom_level:
+        bottom_candidates.append(" ".join(phrase.leaves()))
+        # print ("PA:>> "," ".join(phrase.leaves()))
+
+    bottom_candidates.sort(key=len)
+    rm = ['it', "It", "there", "this", "This", "There"]  # long sentences to remove, we also remove 'it'
+
+    for i in range(len(bottom_candidates)):
+        if i == len(bottom_candidates): break
+        for j in range(i + 1, len(bottom_candidates)):
+            if bottom_candidates[i] in bottom_candidates[j]:
+                rm.append(bottom_candidates[j])
+
+    bottom_nrrw = [fruit for fruit in bottom_candidates if fruit not in rm]  # narrowed candidates
+    #print (">> Bottom: ", bottom_nrrw)
+
+
   ##### Find Answer
-    
+
     ## find from top level first
     final_candidates = copy.copy(top_nrrw)
     #print ("Question filtered: ", filtered_question)
     # remove overlapping ones
-    for cand in top_nrrw: 
+    for cand in top_nrrw:
         for token in filtered_question:
             if token in cand:
                 final_candidates.remove(cand)
                 break
-    
+
     #print ("-------")
     #print (sentence)
-    
+
     ## find from bottom level if top level is too broad
     if len(final_candidates) == 0:
-        
-
-        ##### for bottom level
-        bottom_level = ExtractPhrases(tree, atype)
-        bottom_candidates = []
-        for phrase in bottom_level:
-            bottom_candidates.append(" ".join(phrase.leaves()))
-            # print ("PA:>> "," ".join(phrase.leaves()))
-
-        bottom_candidates.sort(key=len)
-        rm = ['it', "It"]  # long sentences to remove, we also remove 'it'
-
-        for i in range(len(bottom_candidates)):
-            if i == len(bottom_candidates): break
-            for j in range(i + 1, len(bottom_candidates)):
-                if bottom_candidates[i] in bottom_candidates[j]:
-                    rm.append(bottom_candidates[j])
-
-        bottom_nrrw = [fruit for fruit in bottom_candidates if fruit not in rm]  # narrowed candidates
-        #print (">> Bottom: ", bottom_nrrw)
-
 
         # remove overlapping ones
         final_candidates = copy.copy(bottom_nrrw)
         for cand in bottom_nrrw:
             for token in filtered_question:
-                if token in cand: 
+                if token in cand:
                     final_candidates.remove(cand)
                     break
         #print (">>BOTTOMfinal_candidates: ", final_candidates, "\n")
 
-    
+
     #else: # for debug
         #print (">>TOPfinal_candidates: ", final_candidates,"\n")
-    
+
     ### if didn't find anything, return none
     if len(final_candidates) == 0: return None
     else: return final_candidates
 
-         
+
 def prepare_answer(final_candidates):
     '''
       Input: list of final candidates returned from prepare_candidates()
       Output: (answer, number of candidate answers)
     '''
-    
+
     # randomly return one answer
     if not final_candidates : return None, 0
     final_length = len(final_candidates)
@@ -282,7 +280,7 @@ def prepare_answer(final_candidates):
     # print("Final candidates: ", final_length)
     # print ("Answer: ", answer)
     # exit()
-    
+
     return (answer, final_length)
 
 
@@ -301,14 +299,14 @@ def retrieve_answer(paragraph, questions, parser):
     untrack = 0
 
     for question in questions:
-        
+
         # Step1: questions to unigrams and bigrams
         unused_question_list, question_token_set = (make_ngrams(question, ngrams=[1, 2]))
-        
+
         # Step2: window slide to find the match score between the passage sentence and the question
         score_sorted = make_score(para_token_set, question_token_set)
         #print('question:',question)
-        
+
 
         # Step3: retrieve the answer using s1 or s2
         atype = answer_type(question_token_set['1'])
@@ -320,19 +318,28 @@ def retrieve_answer(paragraph, questions, parser):
         s1 = sent_tokenize_list[score_sorted[0][0]]
         s1_candidates = prepare_candidates(question, s1, atype, parser)
         answer, aft_length = prepare_answer(s1_candidates)
-        
+
         if answer == None and len(score_sorted) > 1: # if we have the 2nd sentence and s1 did not find answer
             s2 = sent_tokenize_list[score_sorted[1][0]]
-            print('>>>> sentence2')
+            # print('>>>> sentence2')
             s2_candidates = prepare_candidates(question, s2, atype, parser)
             answer, aft_length = prepare_answer(s2_candidates)
-            
+
 
         #print('answer:', answer, '\n')
         answer_list.append(answer)
         aft_length_list.append(aft_length)
 
     return answer_list, aft_length_list
+
+def write_line(question,answer,our_answer,aft_length,correct):
+    print('right answer:', answer)
+    print('our answer:', our_answer)
+    print('question:', question)
+    print('candidate number:', aft_length, '\n')
+
+    row = [question,answer,our_answer,aft_length,correct]
+    writer.writerow(row)
 
 
 def write_line(question,answer,our_answer,aft_length,correct):
@@ -349,24 +356,24 @@ def write_line(question,answer,our_answer,aft_length,correct):
 if __name__ == "__main__":
 
     # for parse:
-    
+
 ### Alicia
-    #path_to_models_jar = '/Users/G_bgyl/si630/project/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar'  # change to your path
-    #path_to_jar = '/Users/G_bgyl/si630/project/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar'  # change to your path
-    
-### Mengying    
-    path_to_models_jar = "/Users/Mengying/Desktop/SI630 NLP/FinalProject/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar" # change to your path
+    path_to_models_jar = '/Users/G_bgyl/si630/project/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar'  # change to your path
+    path_to_jar = '/Users/G_bgyl/si630/project/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar'  # change to your path
 
-    path_to_jar = "/Users/Mengying/Desktop/SI630 NLP/FinalProject/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar" # change to your path
+### Mengying
+    # path_to_models_jar = "/Users/Mengying/Desktop/SI630 NLP/FinalProject/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar" # change to your path
+    # path_to_jar = "/Users/Mengying/Desktop/SI630 NLP/FinalProject/stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar" # change to your path
 
-    
-### CAEN    
+
+### CAEN
     #path_to_models_jar = 'stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1-models.jar'  # change to your path
     #path_to_jar = "stanford-corenlp-full-2018-02-27/stanford-corenlp-3.9.1.jar"
 
     parser = StanfordParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
 
-    train_dict = read_data("/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json")
+    train_dict = read_data("/Users/G_bgyl/si630/project/dev-v1.1.json")
+
 
     # for test output:
 # for test output:
@@ -484,33 +491,33 @@ if __name__ == "__main__":
             print('count of wrong:', wrong)
 
             print('proportion accuracy for exact right:',
-                  round(right1 / (right1 + right2 + right3 + wrong),3))
+                  round(right1 / (right1 + right2 + right3 + wrong), 3))
             print('proportion accuracy for right with type 1 error:',
-                  round((right1 + right2) / (right1 + right2 + right3 + wrong),3))
+                  round((right1 + right2) / (right1 + right2 + right3 + wrong), 3))
             print('proportion accuracy for right with type 2 error:',
-                  round((right1 + right3) / (right1 + right2 + right3 + wrong),3))
+                  round((right1 + right3) / (right1 + right2 + right3 + wrong), 3))
             print('proportion accuracy for rough right:',
-                  round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong),3))
+                  round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong), 3))
 
             if sum_2 != 0:
-                print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list),3))
+                print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list), 3))
                 print('answer accuracy for right with type 1 error:',
                       round((sum(quality_2_list) + right1) / (len(quality_2_list) + right1) * (right1 + right2) / (
-                              right1 + right2 + right3 + wrong),3))
+                              right1 + right2 + right3 + wrong), 3))
             else:
                 print('sum_2=0')
             if sum_3 != 0:
-                print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list),3))
+                print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list), 3))
                 print('answer accuracy for right with type 2 error:',
                       round((sum(quality_3_list) + right1) / (len(quality_3_list) + right1) * (right1 + right3) / (
-                              right1 + right2 + right3 + wrong),3))
+                              right1 + right2 + right3 + wrong), 3))
             else:
-                print('sum_3=0')
+                print('sum_3=0 \n')
             if sum_2 != 0 and sum_3 != 0:
-                print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3),3)
+                print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3, 3))
                 print('answer retrival accuracy for rough right:',
                       round(((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
-                              right1 + right2 + right3 + wrong),3))
+                              right1 + right2 + right3 + wrong), 3))
         print('For whole document:')
         print('count of exact right:', right1)
         print('count of right with type 1 error:', right1 + right2)
@@ -519,30 +526,30 @@ if __name__ == "__main__":
         print('count of wrong:', wrong)
 
         print('proportion accuracy for exact right:',
-              round(right1 / (right1 + right2 + right3 + wrong),3))
+              round(right1 / (right1 + right2 + right3 + wrong), 3))
         print('proportion accuracy for right with type 1 error:',
-              round((right1 + right2) / (right1 + right2 + right3 + wrong),3))
+              round((right1 + right2) / (right1 + right2 + right3 + wrong), 3))
         print('proportion accuracy for right with type 2 error:',
-              round((right1 + right3) / (right1 + right2 + right3 + wrong),3))
+              round((right1 + right3) / (right1 + right2 + right3 + wrong), 3))
         print('proportion accuracy for rough right:',
-              round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong),3))
+              round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong), 3))
 
         if sum_2 != 0:
-            print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list),3))
+            print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list), 3))
             print('answer accuracy for right with type 1 error:',
                   round((sum(quality_2_list) + right1) / (len(quality_2_list) + right1) * (right1 + right2) / (
-                          right1 + right2 + right3 + wrong),3))
+                          right1 + right2 + right3 + wrong), 3))
         else:
             print('sum_2=0')
         if sum_3 != 0:
-            print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list),3))
+            print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list), 3))
             print('answer accuracy for right with type 2 error:',
                   round((sum(quality_3_list) + right1) / (len(quality_3_list) + right1) * (right1 + right3) / (
-                          right1 + right2 + right3 + wrong),3))
+                          right1 + right2 + right3 + wrong), 3))
         else:
-            print('sum_3=0')
+            print('sum_3=0 \n')
         if sum_2 != 0 and sum_3 != 0:
-            print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3),3)
+            print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3, 3))
             print('answer retrival accuracy for rough right:',
                   round(((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
-                          right1 + right2 + right3 + wrong),3))
+                          right1 + right2 + right3 + wrong), 3))
