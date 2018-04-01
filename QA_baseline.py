@@ -389,8 +389,7 @@ if __name__ == "__main__":
                 # loop through all qas
                 for qa in QA_article['qas']:
                     questions.append(qa['question'])
-                    for answer in qa['answers']:
-                        answers.append(answer['text'])
+                    answers.append(qa['answers'][0]['text'])
 
                     # for intuition:
                     # test_question.append(qa['question'])
