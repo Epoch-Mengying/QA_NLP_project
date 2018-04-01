@@ -19,8 +19,8 @@ import random
 
 # global variables listed here
 QA_TYPE_MATCH = {'what': 'NP', 'when': 'CD', 'where': 'NP', 'whom': 'NP', 'why': 'NP',
-                 'who': 'NP', 'which': 'NP', 'whose': 'NP', 'name': 'NP', 'example': 'NP', 'how many': 'CD',
-                 'how often': 'CD','what year':'CD','location':'NP'}  # a dictionary maps question type to answer type
+                 'who': 'NP', 'which': 'NP', 'whose': 'NP', 'name': 'NP', 'example': 'NP', 'how many': 'CD','how much': 'CD',
+                 'what percentage': 'CD','how often': 'CD','what year':'CD','location':'NP'}  # a dictionary maps question type to answer type
 tokenizer = RegexpTokenizer(r'\w+')
 random.seed(2018)
 
@@ -205,7 +205,7 @@ def prepare_candidates(question, sentence, atype, parser):
     top_candidates = []
     for phrase in top_level:
         top_candidates.append(" ".join(phrase.leaves()))
-    top_nrrw = [fruit for fruit in top_candidates if fruit not in ['it', "It"]]
+    top_nrrw = [fruit for fruit in top_candidates if fruit not in ['it', "It", "there", "this", "This", "There"]]
     #print (">> Top: ",top_nrrw)
 
 
@@ -218,7 +218,7 @@ def prepare_candidates(question, sentence, atype, parser):
         # print ("PA:>> "," ".join(phrase.leaves()))
 
     bottom_candidates.sort(key=len)
-    rm = ['it', "It"]  # long sentences to remove, we also remove 'it'
+    rm = ['it', "It", "there", "this", "This", "There"]  # long sentences to remove, we also remove 'it'
 
     for i in range(len(bottom_candidates)):
         if i == len(bottom_candidates): break
@@ -321,7 +321,7 @@ def retrieve_answer(paragraph, questions, parser):
 
         if answer == None and len(score_sorted) > 1: # if we have the 2nd sentence and s1 did not find answer
             s2 = sent_tokenize_list[score_sorted[1][0]]
-            print('>>>> sentence2')
+            # print('>>>> sentence2')
             s2_candidates = prepare_candidates(question, s2, atype, parser)
             answer, aft_length = prepare_answer(s2_candidates)
 
@@ -396,8 +396,7 @@ if __name__ == "__main__":
                 # loop through all qas
                 for qa in QA_article['qas']:
                     questions.append(qa['question'])
-                    for answer in qa['answers']:
-                        answers.append(answer['text'])
+                    answers.append(qa['answers'][0]['text'])
 
                     # for intuition:
                     # test_question.append(qa['question'])
@@ -492,33 +491,33 @@ if __name__ == "__main__":
             print('count of wrong:', wrong)
 
             print('proportion accuracy for exact right:',
-                  round(right1 / (right1 + right2 + right3 + wrong),3))
+                  round(right1 / (right1 + right2 + right3 + wrong), 3))
             print('proportion accuracy for right with type 1 error:',
-                  round((right1 + right2) / (right1 + right2 + right3 + wrong),3))
+                  round((right1 + right2) / (right1 + right2 + right3 + wrong), 3))
             print('proportion accuracy for right with type 2 error:',
-                  round((right1 + right3) / (right1 + right2 + right3 + wrong),3))
+                  round((right1 + right3) / (right1 + right2 + right3 + wrong), 3))
             print('proportion accuracy for rough right:',
-                  round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong),3))
+                  round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong), 3))
 
             if sum_2 != 0:
-                print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list),3))
+                print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list), 3))
                 print('answer accuracy for right with type 1 error:',
                       round((sum(quality_2_list) + right1) / (len(quality_2_list) + right1) * (right1 + right2) / (
-                              right1 + right2 + right3 + wrong),3))
+                              right1 + right2 + right3 + wrong), 3))
             else:
                 print('sum_2=0')
             if sum_3 != 0:
-                print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list),3))
+                print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list), 3))
                 print('answer accuracy for right with type 2 error:',
                       round((sum(quality_3_list) + right1) / (len(quality_3_list) + right1) * (right1 + right3) / (
-                              right1 + right2 + right3 + wrong),3))
+                              right1 + right2 + right3 + wrong), 3))
             else:
-                print('sum_3=0')
+                print('sum_3=0 \n')
             if sum_2 != 0 and sum_3 != 0:
-                print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3),3)
+                print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3, 3))
                 print('answer retrival accuracy for rough right:',
                       round(((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
-                              right1 + right2 + right3 + wrong),3))
+                              right1 + right2 + right3 + wrong), 3))
         print('For whole document:')
         print('count of exact right:', right1)
         print('count of right with type 1 error:', right1 + right2)
@@ -527,30 +526,30 @@ if __name__ == "__main__":
         print('count of wrong:', wrong)
 
         print('proportion accuracy for exact right:',
-              round(right1 / (right1 + right2 + right3 + wrong),3))
+              round(right1 / (right1 + right2 + right3 + wrong), 3))
         print('proportion accuracy for right with type 1 error:',
-              round((right1 + right2) / (right1 + right2 + right3 + wrong),3))
+              round((right1 + right2) / (right1 + right2 + right3 + wrong), 3))
         print('proportion accuracy for right with type 2 error:',
-              round((right1 + right3) / (right1 + right2 + right3 + wrong),3))
+              round((right1 + right3) / (right1 + right2 + right3 + wrong), 3))
         print('proportion accuracy for rough right:',
-              round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong),3))
+              round((right1 + right2 + right3) / (right1 + right2 + right3 + wrong), 3))
 
         if sum_2 != 0:
-            print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list),3))
+            print('quality of type 1 error:', round(sum(quality_2_list) / len(quality_2_list), 3))
             print('answer accuracy for right with type 1 error:',
                   round((sum(quality_2_list) + right1) / (len(quality_2_list) + right1) * (right1 + right2) / (
-                          right1 + right2 + right3 + wrong),3))
+                          right1 + right2 + right3 + wrong), 3))
         else:
             print('sum_2=0')
         if sum_3 != 0:
-            print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list),3))
+            print('quality of type 2 error:', round(sum(quality_3_list) / len(quality_3_list), 3))
             print('answer accuracy for right with type 2 error:',
                   round((sum(quality_3_list) + right1) / (len(quality_3_list) + right1) * (right1 + right3) / (
-                          right1 + right2 + right3 + wrong),3))
+                          right1 + right2 + right3 + wrong), 3))
         else:
-            print('sum_3=0')
+            print('sum_3=0 \n')
         if sum_2 != 0 and sum_3 != 0:
-            print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3),3)
+            print('overall quality:', round((1 + right_2 / sum_2 + right_3 / sum_3) / 3, 3))
             print('answer retrival accuracy for rough right:',
                   round(((1 + right_2 / sum_2 + right_3 / sum_3) / 3) * (right1 + right2 + right3) / (
-                          right1 + right2 + right3 + wrong),3))
+                          right1 + right2 + right3 + wrong), 3))
