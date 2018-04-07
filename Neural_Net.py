@@ -17,6 +17,7 @@ import copy
 from nltk.parse.stanford import StanfordParser
 import random
 import pickle
+import tensorflow as tf
 
 random.seed(2018)
 np.random.seed(2018)
@@ -131,10 +132,10 @@ def sentence2sequence(sentence):
 #-------------
 if __name__ == "__main__":
 
-    # Step1: load data
+## Step1: load data
 
     
-    # Step2: load Glove and gather the distribution hyperparameters
+## Step2: load Glove and gather the distribution hyperparameters
     glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
 
     wvecs = []
@@ -144,6 +145,50 @@ if __name__ == "__main__":
  
     Gvar = np.var(s,0) 
     Gmean = np.mean(s,0)
+
+
+
+## Step3: Tensor Flow
+    tf.reset_default_graph()   # clear the graph, so that we can always run again if we need to change anything
+
+
+    #### Hyperparameters ####
+
+    # The number of dimensions used to store data passed between recurrent layers in the network.
+    recurrent_cell_size = 128
+
+    # The number of dimensions in our word vectorizations.
+    D = 50 
+
+    # How quickly the network learns. Too high, and we may run into numeric instability 
+    # or other issues.
+    learning_rate = 0.005
+
+    # Dropout probabilities. For a description of dropout and what these probabilities are, 
+    # see Entailment with TensorFlow.
+    input_p, output_p = 0.5, 0.5
+
+    # How many questions we train on at a time.
+    batch_size = 128
+
+    # Number of passes in episodic memory. We'll get to this later.
+    passes = 4
+
+    # Feed Forward layer sizes: the number of dimensions used to store data passed from feed-forward layers.
+    ff_hidden_size = 256
+
+    weight_decay = 0.00000001
+    # The strength of our regularization. Increase to encourage sparsity in episodic memory, 
+    # but makes training slower. Don't make this larger than leraning_rate.
+
+    training_iterations_count = 400000
+    # How many questions the network trains on each time it is trained. 
+    # Some questions are counted multiple times.
+
+    display_step = 100
+    # How many iterations of training occur before each validation check.
+
+
 
 
 
