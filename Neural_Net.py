@@ -62,6 +62,11 @@ def load_Glove(filename, overide = False):
         return glove_wordmap
 
 
+# -------------
+# Prepare data for Neural Network
+# -------------
+
+
 def generate_new(unk):
     """ 
       Input: unknown word
@@ -73,6 +78,53 @@ def generate_new(unk):
     glove_wordmap[unk] = RS.multivariate_normal(Gmean,np.diag(Gvar))
     
     return glove_wordmap[unk]
+
+
+
+
+def sentence2sequence(sentence):
+    """
+    - Turns an input paragraph into an (m,d) matrix, 
+        where n is the number of tokens in the sentence
+        and d is the number of dimensions each word vector has.
+
+      Input: sentence, string
+      Output: embedding vector stacked row by row, in a matrix. And corresponding words(list)
+
+    """
+    tokens = sentence.strip('"(),-').lower().split(" ")  # The characters to be removed from beginning or end of the string.
+    rows = []
+    words = []
+
+    
+    #Greedy search for tokens: if it did not find the whole word in glove, then truncate tail to find
+    for token in tokens:
+        i = len(token)
+        while len(token) > 0:
+            word = token[:i]                 # shallow copy
+            if word in glove_wordmap:
+                rows.append(glove_wordmap[word])
+                words.append(word)
+                token = token[i:]
+                i = len(token)               # reset to 0 
+                continue
+            else:
+                i = i-1
+            if i == 0:
+                # word OOV
+                # https://arxiv.org/pdf/1611.01436.pdf
+                rows.append(generate_new(token))
+                words.append(token)
+                break
+    return np.array(rows), words
+
+
+
+
+
+
+
+
 
 
 
