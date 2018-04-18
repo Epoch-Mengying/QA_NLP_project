@@ -18,9 +18,18 @@ from nltk.parse.stanford import StanfordParser
 import random
 
 # global variables listed here
+
+
+# -----------------------------------------------
+# a dictionary maps question type to answer type
+# -----------------------------------------------
 QA_TYPE_MATCH = {'what': 'NP', 'when': 'CD', 'where': 'NP', 'whom': 'NP', 'why': 'NP',
-                 'who': 'NP', 'which': 'NP', 'whose': 'NP', 'name': 'NP', 'example': 'NP', 'how many': 'CD','how much': 'CD',
-                 'what percentage': 'CD','how often': 'CD','what year':'CD','location':'NP'}  # a dictionary maps question type to answer type
+                 'who': 'NP', 'which': 'NP', 'whose': 'NP', 'name': 'NP', 'example': 'NP',
+                 'how many': 'CD','how much': 'CD','what percentage': 'CD','how often': 'CD',
+                 'what year':'CD','location':'NP'}
+
+
+
 tokenizer = RegexpTokenizer(r'\w+')
 random.seed(2018)
 
