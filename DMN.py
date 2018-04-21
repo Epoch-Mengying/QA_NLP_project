@@ -41,11 +41,11 @@ np.random.seed(2018)
 #train_file = '/Users/G_bgyl/si630/project/train-v1.1.json'
 #test_file = '/Users/G_bgyl/si630/project/dev-v1.1.json'
 
-train_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json'
-test_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/dev-v1.1.json'
+#train_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json'
+#test_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/dev-v1.1.json'
 
-#train_file = 'project/train-v1.1.json'
-#test_file = 'project/dev-v1.1.json'
+train_file = 'project/train-v1.1.json'
+test_file = 'project/dev-v1.1.json'
 
 
 # -------------
@@ -77,8 +77,8 @@ def load_Glove(glove_vectors_file, overide=True):
 glove_wordmap = {}
 
 #glove_wordmap = load_Glove("/Users/G_bgyl/si630/project/Neural_Network/glove.6B/glove.6B.50d.txt")
-glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
-#glove_wordmap = load_Glove("project/glove.6B.50d.txt")
+#glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
+glove_wordmap = load_Glove("project/glove.6B.50d.txt")
 
 wvecs = []
 for item in glove_wordmap.items():
