@@ -35,10 +35,11 @@ import pickle
 random.seed(2018)
 np.random.seed(2018)
 # Step1: load data
-train_file = '/Users/G_bgyl/si630/project/train-v1.1.json'
-test_file = '/Users/G_bgyl/si630/project/dev-v1.1.json'
+#train_file = '/Users/G_bgyl/si630/project/train-v1.1.json'
+#test_file = '/Users/G_bgyl/si630/project/dev-v1.1.json'
 
-
+train_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json'
+test_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/dev-v1.1.json'
 
 
 # -------------
@@ -78,8 +79,8 @@ def load_Glove(glove_vectors_file, overide=True):
 # Step2: load Glove and gather the distribution hyperparameters
 # global variables listed here
 glove_wordmap = {}
-# glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
-glove_wordmap = load_Glove("/Users/G_bgyl/si630/project/Neural_Network/glove.6B/glove.6B.50d.txt")
+glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
+#glove_wordmap = load_Glove("/Users/G_bgyl/si630/project/Neural_Network/glove.6B/glove.6B.50d.txt")
 
 wvecs = []
 for item in glove_wordmap.items():
@@ -399,7 +400,7 @@ def attention(c, mem, existing_facts):
         return tf.expand_dims(tf.sparse_tensor_to_dense(tf.sparse_softmax(softmaxable)),-1)
 # facts_0s: a [batch_size, max_facts_length, 1] tensor
 #     whose values are 1 if the corresponding fact exists and 0 if not.
-facts_0s = tf.cast(tf.count_nonzero(input_sentence_endings[:,:,-1:],-1,keepdims=True),tf.float32)
+facts_0s = tf.cast(tf.count_nonzero(input_sentence_endings[:,:,-1:],-1,keep_dimsdims=True),tf.float32)
 
 
 with tf.variable_scope("Episodes") as scope:
@@ -493,7 +494,7 @@ gold_standard = tf.placeholder(tf.float32, [None, None, D], "answer")
 with tf.variable_scope('accuracy'):
     eq = tf.equal(context, gold_standard)
     corrbool = tf.reduce_all(eq,-1)
-    logloc = tf.reduce_max(logits, -1, keepdims = True)
+    logloc = tf.reduce_max(logits, -1, keep_dims = True)
     # locs: A boolean tensor that indicates where the score
     #  matches the minimum score. This happens on multiple dimensions,
     #  so in the off chance there's one or two indexes that match
@@ -534,6 +535,9 @@ opt_op = optimizer.minimize(total_loss)
 
 # Initialize variables
 init = tf.global_variables_initializer()
+
+# Save the model
+saver = tf.train.Saver()
 
 # Launch the TensorFlow session
 sess = tf.Session()
@@ -652,15 +656,15 @@ attenders = np.array(ancr[6:-3])
 faq = np.sum(ancr[4], axis=(-1,-2)) # Number of facts in each context
 
 limit = 5
-for question in range(min(limit, batch_size)):
-    plt.yticks(range(passes,0,-1))
-    plt.ylabel("Episode")
-    plt.xlabel("Question "+str(question+1))
-    pltdata = attenders[:,question,:int(faq[question]),0]
-    # Display only information about facts that actually exist, all others are 0
-    pltdata = (pltdata - pltdata.mean()) / ((pltdata.max() - pltdata.min() + 0.001)) * 256
-    plt.pcolor(pltdata, cmap=plt.cm.BuGn, alpha=0.7)
-    plt.show()
+# for question in range(min(limit, batch_size)):
+#     plt.yticks(range(passes,0,-1))
+#     plt.ylabel("Episode")
+#     plt.xlabel("Question "+str(question+1))
+#     pltdata = attenders[:,question,:int(faq[question]),0]
+#     # Display only information about facts that actually exist, all others are 0
+#     pltdata = (pltdata - pltdata.mean()) / ((pltdata.max() - pltdata.min() + 0.001)) * 256
+#     plt.pcolor(pltdata, cmap=plt.cm.BuGn, alpha=0.7)
+#     plt.show()
 
 #print(list(map((lambda x: x.shape),ancr[3:])), new_ends.shape)
 
@@ -682,6 +686,11 @@ for i,e,cw, cqa in list(zip(indices, indicesc, val_context_words, val_cqas))[:li
 
 
 train(training_iterations_count, batch_size)
+
+# Save the model
+save_path = saver.save(sess, "results/model.ckpt")
+
+
 # Final testing accuracy
 # TODO: uncomment the sentence below
 print(np.mean(sess.run([corrects], feed_dict= prep_batch(final_test_data))[0]))
