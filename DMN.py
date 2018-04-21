@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+#import matplotlib.pyplot as plt
+#import matplotlib.ticker as ticker
 import urllib
 import sys
 import os
@@ -44,8 +44,8 @@ np.random.seed(2018)
 #train_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json'
 #test_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/dev-v1.1.json'
 
-train_file = 'project/train-v1.1.json'
-test_file = 'project/dev-v1.1.json'
+train_file = 'DATA/train-v1.1.json'
+test_file = 'DATA/dev-v1.1.json'
 
 
 # -------------
@@ -59,7 +59,7 @@ def load_Glove(glove_vectors_file, overide=True):
     global glove_wordmap
 
     if overide:
-        glove_wordmap = pickle.load(open("project/Glove.p", "rb"))
+        glove_wordmap = pickle.load(open("DATA/Glove.p", "rb"))
         return glove_wordmap
 
     else:
@@ -68,7 +68,7 @@ def load_Glove(glove_vectors_file, overide=True):
                 name, vector = tuple(line.split(" ", 1))
                 glove_wordmap[name] = np.fromstring(vector, sep=" ")
 
-        pickle.dump(glove_wordmap, open("project/Glove.p", "wb+"))
+        pickle.dump(glove_wordmap, open("DATA/Glove.p", "wb+"))
         return glove_wordmap
 
 
@@ -78,7 +78,7 @@ glove_wordmap = {}
 
 #glove_wordmap = load_Glove("/Users/G_bgyl/si630/project/Neural_Network/glove.6B/glove.6B.50d.txt")
 #glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
-glove_wordmap = load_Glove("project/glove.6B.50d.txt")
+glove_wordmap = load_Glove("DATA/glove.6B.50d.txt")
 
 wvecs = []
 for item in glove_wordmap.items():
@@ -173,9 +173,9 @@ def contextualize(set_file, overide = False, is_train = True):
     """
     if overide:
         if is_train:
-            data = pickle.load(open("project/Train1.p", "rb"))
+            data = pickle.load(open("DATA/Train1.p", "rb"))
         else:
-            data = pickle.load(open("project/Test1.p","rb"))
+            data = pickle.load(open("DATA/Test1.p","rb"))
         return data
     
     else:
@@ -209,16 +209,16 @@ def contextualize(set_file, overide = False, is_train = True):
 
         # save it in pickle to re-use next time
         if is_train:
-            pickle.dump(data, open("project/Train.p", "wb+"))
+            pickle.dump(data, open("DATA/Train1.p", "wb+"))
         else:
-            pickle.dump(data, open("project/Test.p", "wb+"))
+            pickle.dump(data, open("DATA/Test1.p", "wb+"))
         
         return data
 
 
 # Read in Data
-train_data  = contextualize(train_file, overide = True, is_train = True)
-test_data  = contextualize(test_file, overide = True, is_train = False)  # Q. is the data structure different?
+train_data  = contextualize(train_file, overide = False, is_train = True)
+test_data  = contextualize(test_file, overide = False, is_train = False)  # Q. is the data structure different?
 
 
 
