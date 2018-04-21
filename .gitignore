@@ -1,6 +1,8 @@
+
 .DS_Store
 baseline_dev_result.csv
-project/
 Glove.p
+DATA/
+results/
 .DS*
 

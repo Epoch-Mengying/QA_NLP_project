@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+#import matplotlib.pyplot as plt
+#import matplotlib.ticker as ticker
 import urllib
 import sys
 import os
@@ -31,26 +31,21 @@ import copy
 from nltk.parse.stanford import StanfordParser
 import random
 import pickle
+from tensorflow.python import debug as tf_debug
+
 
 random.seed(2018)
 np.random.seed(2018)
-# Step1: load data
+# Step1: load data, change to your directory
+
 #train_file = '/Users/G_bgyl/si630/project/train-v1.1.json'
 #test_file = '/Users/G_bgyl/si630/project/dev-v1.1.json'
 
-train_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json'
-test_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/dev-v1.1.json'
+#train_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json'
+#test_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/dev-v1.1.json'
 
-
-# -------------
-# Read in data
-# -------------
-def read_data(filename, overide=False):
-    """ Read json formatted file, and return a dictionary """
-
-    with open(filename) as json_data:
-        doc = json.load(json_data)
-        return doc
+train_file = 'DATA/train-v1.1.json'
+test_file = 'DATA/dev-v1.1.json'
 
 
 # -------------
@@ -64,7 +59,7 @@ def load_Glove(glove_vectors_file, overide=True):
     global glove_wordmap
 
     if overide:
-        glove_wordmap = pickle.load(open("Glove.p", "rb"))
+        glove_wordmap = pickle.load(open("DATA/Glove.p", "rb"))
         return glove_wordmap
 
     else:
@@ -73,25 +68,32 @@ def load_Glove(glove_vectors_file, overide=True):
                 name, vector = tuple(line.split(" ", 1))
                 glove_wordmap[name] = np.fromstring(vector, sep=" ")
 
-        pickle.dump(glove_wordmap, open("Glove.p", "wb+"))
+        pickle.dump(glove_wordmap, open("DATA/Glove.p", "wb+"))
         return glove_wordmap
 
-# Step2: load Glove and gather the distribution hyperparameters
-# global variables listed here
+
+
+# Step2: load Glove and gather the distribution parameters, change to your directory when load
 glove_wordmap = {}
-glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
+
 #glove_wordmap = load_Glove("/Users/G_bgyl/si630/project/Neural_Network/glove.6B/glove.6B.50d.txt")
+#glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
+glove_wordmap = load_Glove("DATA/glove.6B.50d.txt")
 
 wvecs = []
 for item in glove_wordmap.items():
     wvecs.append(item[1])
+
 s = np.vstack(wvecs)
 
-Gvar = np.var(s, 0)
+Gvar = np.var(s, 0)      # distributional parameter for Glove, for later generating random embedding for UNK
 Gmean = np.mean(s, 0)
 
 
 
+# -------------
+# Dealing with Unknown words in Glove and Sen2seq
+# -------------
 
 def generate_new(unk):
     """
@@ -106,6 +108,7 @@ def generate_new(unk):
     return glove_wordmap[unk]
 
 
+
 def sentence2sequence(sentence, answer = False):
     """
     - Turns an input paragraph into an (m,d) matrix,
@@ -114,13 +117,11 @@ def sentence2sequence(sentence, answer = False):
       Input: sentence, string
       Output: embedding vector stacked row by row, in a matrix. And corresponding words(list)
     """
-    sentence = ''.join(c for c in sentence if c not in punctuation)
+    # sentence = ''.join(c for c in sentence if c not in punctuation)
     # punctuation: '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
-    tokens = sentence.strip('"(),-').lower().split(
-        " ")  # The characters to be removed from beginning or end of the string.
-    # if answer:
-    #     print('sent:',sentence)
-    #     print('tokens:',tokens)
+    
+    tokens = sentence.strip('"(),- ').lower().split(" ")  # The characters to be removed from beginning or end of the string.
+
     rows = []
     words = []
 
@@ -131,74 +132,94 @@ def sentence2sequence(sentence, answer = False):
             word = token[:i]  # shallow copy
             if word in glove_wordmap:
                 rows.append(glove_wordmap[word])
-
                 words.append(word)
-                token = token[i:]
-                i = len(token)  # reset to 0
+                token = token[i:]   # set to whatever the rest of words is, eg. hallway --> hall, way, split to 2 words
+                i = len(token)  
                 continue
             else:
                 i = i - 1
             if i == 0:
-                # word OOV
-                # https://arxiv.org/pdf/1611.01436.pdf
                 rows.append(generate_new(token))
                 words.append(token)
                 break
 
+    # for old Answer module: only use the first word for answer
     if answer:
 
         if len(words)>1:
             words = [words[0]]
             rows = [rows[0]]
-        if len(words)>1:
-            print(words)
+        #if len(words)<1:
+            #print(words)
 
     return np.array(rows), words
 
-# -------------
-# Prepare data
-# -------------
 
-def contextualize(set_file):
+ 
+# -------------
+# Read in and Prepare data
+# -------------
+def contextualize(set_file, overide = False, is_train = True):
     """
     Read in the dataset of questions and build question+answer -> context sets.
-    Output is a list of data points, each of which is a 7-element tuple containing:
+    Output is a list of data points, each of which is a 6-element tuple containing:
+        (vector, words)
         The sentences in the context in vectorized form.
-        The sentences in the context as a list of string tokens.
+        The sentences in the context as a list of string tokens. 
         The question in vectorized form.
         The question as a list of string tokens.
         The answer in vectorized form.
         The answer as a list of string tokens.
-        A list of numbers for supporting statements, which is currently unused.
     """
-    data = []
-    context = []
-    with open(set_file, "r", encoding="utf8") as train:
-        j=0
-        train_dict=json.load(train)
-        for QA_dict in train_dict['data']: # loop through each article
-            for QA_article in QA_dict['paragraphs']:
-                context =[]
-                paragraph = QA_article['context']
-                sent_tokenize_list = sent_tokenize(paragraph)
-                for sent in sent_tokenize_list:
-                    context.append(sentence2sequence(sent))
+    if overide:
+        if is_train:
+            data = pickle.load(open("DATA/Train1.p", "rb"))
+        else:
+            data = pickle.load(open("DATA/Test1.p","rb"))
+        return data
+    
+    else:
+        data = []
+        context = []
+        with open(set_file, "r", encoding="utf8") as train:
+            j=0
+            train_dict=json.load(train)
+            for QA_dict in train_dict['data']: # loop through each article
+                for QA_article in QA_dict['paragraphs']:
+                    context =[]
+                    paragraph = QA_article['context']
+                    sent_tokenize_list = sent_tokenize(paragraph)
+                    for sent in sent_tokenize_list:
+                        context.append(sentence2sequence(sent))
 
-                for qa in QA_article['qas']:
-                    j+=1
-                    question = qa['question']
-                    answer = qa['answers'][0]['text']
-                    #debug4.7
-                    answer_test = answer.split()[0]
-                    # print(j,'answer_test',answer_test)
+                    for qa in QA_article['qas']:
+                        
+                        question = qa['question']
+                        answer = qa['answers'][0]['text']
+                        #debug4.7
+                        answer_test = answer.split()[0]
+                        # print(j,'answer_test',answer_test)
+                    
+                        # tuple(zip(*context)) will return a tuple with (contextvs, contextws)
+                        data.append((tuple(zip(*context))+ sentence2sequence(question)+ sentence2sequence(answer_test,True)))
+                j+=1
+                
+                #if j == 5: break
+                #break  #only load one article
 
-                    data.append((tuple(zip(*context))+ sentence2sequence(question)+ sentence2sequence(answer_test,True)))
+        # save it in pickle to re-use next time
+        if is_train:
+            pickle.dump(data, open("DATA/Train1.p", "wb+"))
+        else:
+            pickle.dump(data, open("DATA/Test1.p", "wb+"))
+        
+        return data
 
-            break # only load one article
-    return data
 
-train_data = contextualize(train_file)
-test_data = contextualize(test_file)
+# Read in Data
+train_data  = contextualize(train_file, overide = False, is_train = True)
+test_data  = contextualize(test_file, overide = False, is_train = False)  # Q. is the data structure different?
+
 
 
 def finalize(data):
@@ -207,15 +228,16 @@ def finalize(data):
     """
     final_data = []
     for cqas in train_data:
-        contextvs, contextws, qvs, qws, avs, aws= cqas
-        lengths = itertools.accumulate(len(cvec) for cvec in contextvs)
-        for i,each in enumerate(contextvs):
+        contextvs, contextws, qvs, qws, avs, aws= cqas  # one data point
+        lengths = itertools.accumulate(len(cvec) for cvec in contextvs)  # knows the sentence ending by previous sent_tokenize
+        for i,each in enumerate(contextvs): # each sentence's (s_len, D)
             if i>0:
-
                 if len(each.shape)>1 and len(contextvs[i-1].shape)>1:
                     pass
                 else:
                     print('len is not the same')
+                    print (len(each.shape), "||", len(contextvs[i-1].shape))
+                    break
         context_vec = np.concatenate(contextvs)
         context_words = sum(contextws,[])
 
@@ -230,6 +252,7 @@ final_train_data = []
 final_test_data = []
 final_train_data = finalize(train_data)
 final_test_data = finalize(test_data)
+
 # ------------------
 # Hyper parameters
 # ------------------
@@ -323,7 +346,9 @@ question_module_outputs, _ = tf.nn.dynamic_rnn(gru_drop, query, dtype=tf.float32
 q = tf.gather_nd(question_module_outputs, input_query_lengths)
 
 
-# Episodic Memory
+# ----------------
+# Memory Module
+# ----------------
 
 # make sure the current memory (i.e. the question vector) is broadcasted along the facts dimension
 size = tf.stack([tf.constant(1),tf.shape(cs)[1], tf.constant(1)])
@@ -400,7 +425,7 @@ def attention(c, mem, existing_facts):
         return tf.expand_dims(tf.sparse_tensor_to_dense(tf.sparse_softmax(softmaxable)),-1)
 # facts_0s: a [batch_size, max_facts_length, 1] tensor
 #     whose values are 1 if the corresponding fact exists and 0 if not.
-facts_0s = tf.cast(tf.count_nonzero(input_sentence_endings[:,:,-1:],-1,keep_dimsdims=True),tf.float32)
+facts_0s = tf.cast(tf.count_nonzero(input_sentence_endings[:,:,-1:],-1,keep_dims=True),tf.float32)
 
 
 with tf.variable_scope("Episodes") as scope:
@@ -438,7 +463,9 @@ with tf.variable_scope("Episodes") as scope:
 
 
 
+# ----------------
 # Answer Module
+# ----------------
 
 # a0: Final memory state. (Input to answer module)
 a0 = tf.concat([memory[-1], q], -1)
@@ -487,7 +514,7 @@ with tf.variable_scope("answer"):
 
 
 
-# Training
+################ Training Prep
 
 # gold_standard: The real answers.
 gold_standard = tf.placeholder(tf.float32, [None, None, D], "answer")
@@ -581,7 +608,8 @@ def prep_batch(batch_data, more_data = False):
         queries[i,0:len(question),:] = question
     data = {context_placeholder: final_contexts, input_sentence_endings: new_ends,
                             query:queries, input_query_lengths:querylengths, gold_standard: answervs}
-    return (data, context_words, cqas) if more_data else (data , aws)
+    return (data, context_words, cqas) if more_data else (data , aws,context_words)
+
 
 # Use TQDM if installed
 tqdm_installed = False
@@ -594,14 +622,22 @@ except:
 
 # Prepare validation set
 # batch: range from 0 to number of question of all test data
+np.random.seed(2018)
 batch = np.random.randint(final_test_data.shape[0], size=batch_size*10)
 batch_data = final_test_data[batch]
 
 validation_set, val_context_words, val_cqas = prep_batch(batch_data, True)
 
-# training_iterations_count: The number of data pieces to train on in total
-# batch_size: The number of data pieces per batch
+
+
+
+################ Training 
+
 def train(iterations, batch_size):
+    '''
+       training_iterations_count: The number of data pieces to train on in total
+       batch_size: The number of data pieces per batch
+    '''
     training_iterations = range(0,iterations,batch_size)
     if tqdm_installed:
         # Add a progress bar if TQDM is installed
@@ -609,12 +645,14 @@ def train(iterations, batch_size):
 
     wordz = []
     for j in training_iterations:
-
+        #if j<8320:
+        #    continue
+        print('interation(1-10):',j)
         batch = np.random.randint(final_train_data.shape[0], size=batch_size)
         batch_data = final_train_data[batch]
         k=0
 
-        feed_dict ,aws= prep_batch(batch_data)
+        feed_dict ,aws,context_words= prep_batch(batch_data)
         feed_dict[gold_standard]= np.asarray(feed_dict[gold_standard])
 
         for key in feed_dict:
@@ -630,13 +668,14 @@ def train(iterations, batch_size):
                 for i,array in enumerate(feed_dict[key]):
                     if array.shape[0]!=1:
                         print(i,aws[i],array)#
-
+                        print("Context>> ", context_words[i])
+                        #print ("Q: ", qws[i])
                 # print(aws)
 
 
 
         sess.run([opt_op,], feed_dict=feed_dict)
-        if (j/batch_size) % display_step == 0:
+        if (j/batch_size) % 10 == 0:#display_step
 
             # Calculate batch accuracy
             acc, ccs, tmp_loss, log, con, cor, loc  = sess.run([corrects, cs, total_loss, logit,
@@ -645,87 +684,65 @@ def train(iterations, batch_size):
             # Display results
             print("Iter " + str(j/batch_size) + ", Minibatch Loss= ",tmp_loss,
                   "Accuracy= ", np.mean(acc))
+                  
+
+
+####### PRELIMINARY RESULTS
 train(300,batch_size) # Small amount of training for preliminary results
+#
+# ancr = sess.run([corrbool,locs, total_loss, logits, facts_0s, w_1]+attends+
+#                 [query, cs, question_module_outputs],feed_dict=validation_set)
+# a = ancr[0]
+# n = ancr[1]
+# cr = ancr[2]
+# attenders = np.array(ancr[6:-3])
+# faq = np.sum(ancr[4], axis=(-1,-2)) # Number of facts in each context
+#
+# limit = 5
+# # for question in range(min(limit, batch_size)):
+# #     plt.yticks(range(passes,0,-1))
+# #     plt.ylabel("Episode")
+# #     plt.xlabel("Question "+str(question+1))
+# #     pltdata = attenders[:,question,:int(faq[question]),0]
+# #     # Display only information about facts that actually exist, all others are 0
+# #     pltdata = (pltdata - pltdata.mean()) / ((pltdata.max() - pltdata.min() + 0.001)) * 256
+# #     plt.pcolor(pltdata, cmap=plt.cm.BuGn, alpha=0.7)
+# #     plt.show()
+#
+# #print(list(map((lambda x: x.shape),ancr[3:])), new_ends.shape)
+#
+#
+# # Locations of responses within contexts
+# indices = np.argmax(n,axis=1)
+#
+# # Locations of actual answers within contexts
+# indicesc = np.argmax(a,axis=1)
+#
+# for i,e,cw, cqa in list(zip(indices, indicesc, val_context_words, val_cqas))[:limit]:
+#     ccc = " ".join(cw)
+#     print("TEXT: ",ccc)
+#     print ("QUESTION: ", " ".join(cqa[3]))
+#     print ("RESPONSE: ", cw[i], ["Correct", "Incorrect"][i!=e])
+#     print("EXPECTED: ", cw[e])
+#     print()
 
-ancr = sess.run([corrbool,locs, total_loss, logits, facts_0s, w_1]+attends+
-                [query, cs, question_module_outputs],feed_dict=validation_set)
-a = ancr[0]
-n = ancr[1]
-cr = ancr[2]
-attenders = np.array(ancr[6:-3])
-faq = np.sum(ancr[4], axis=(-1,-2)) # Number of facts in each context
 
-limit = 5
-# for question in range(min(limit, batch_size)):
-#     plt.yticks(range(passes,0,-1))
-#     plt.ylabel("Episode")
-#     plt.xlabel("Question "+str(question+1))
-#     pltdata = attenders[:,question,:int(faq[question]),0]
-#     # Display only information about facts that actually exist, all others are 0
-#     pltdata = (pltdata - pltdata.mean()) / ((pltdata.max() - pltdata.min() + 0.001)) * 256
-#     plt.pcolor(pltdata, cmap=plt.cm.BuGn, alpha=0.7)
-#     plt.show()
-
-#print(list(map((lambda x: x.shape),ancr[3:])), new_ends.shape)
-
-
-# Locations of responses within contexts
-indices = np.argmax(n,axis=1)
-
-# Locations of actual answers within contexts
-indicesc = np.argmax(a,axis=1)
-
-for i,e,cw, cqa in list(zip(indices, indicesc, val_context_words, val_cqas))[:limit]:
-    ccc = " ".join(cw)
-    print("TEXT: ",ccc)
-    print ("QUESTION: ", " ".join(cqa[3]))
-    print ("RESPONSE: ", cw[i], ["Correct", "Incorrect"][i!=e])
-    print("EXPECTED: ", cw[e])
-    print()
-
-
-
-train(training_iterations_count, batch_size)
+######## REAL TRAINING
+#train(training_iterations_count, batch_size)
 
 # Save the model
 save_path = saver.save(sess, "results/model.ckpt")
 
 
-# Final testing accuracy
+######## Final testing accuracy
 # TODO: uncomment the sentence below
-print(np.mean(sess.run([corrects], feed_dict= prep_batch(final_test_data))[0]))
+re_prep_batch = prep_batch(final_test_data)[0]
+print(np.mean(sess.run([corrects], feed_dict=re_prep_batch)[0]))
+
+
 sess.close()
 
-# # -------------
-# if __name__ == "__main__":
-#
-#     # Step1: load data
-#     train_file = '/Users/G_bgyl/si630/project/train-v1.1.json'
-#     test_file = '/Users/G_bgyl/si630/project/dev-v1.1.json'
-#
-#
-#     # Step2: load Glove and gather the distribution hyperparameters
-#     # glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
-#     glove_wordmap = load_Glove("/Users/G_bgyl/si630/project/Neural_Network/glove.6B/glove.6B.50d.txt")
-#
-#     wvecs = []
-#     for item in glove_wordmap.items():
-#         wvecs.append(item[1])
-#     s = np.vstack(wvecs)
-#
-#     Gvar = np.var(s, 0)
-#     Gmean = np.mean(s, 0)
-#
-#
-#     # step 3 prepare data
-#     # step 4
-#     train_data = contextualize(train_file)
-#     test_data = contextualize(test_file)
-#
-#     final_train_data = []
-#     final_test_data = []
-#     final_train_data = finalize(train_data)
-#     final_test_data = finalize(test_data)
+
 
 
 
