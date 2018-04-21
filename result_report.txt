@@ -1,0 +1,17 @@
+For whole document:
+count of exact right: 118
+count of right with type 1 error: 232
+count of right with type 2 error: 202
+count of rough right: 316
+count of wrong: 1120
+proportion accuracy for exact right: 0.082
+proportion accuracy for right with type 1 error: 0.162
+proportion accuracy for right with type 2 error: 0.141
+proportion accuracy for rough right: 0.22
+quality of type 1 error: 0.447
+answer accuracy for right with type 1 error: 0.118
+quality of type 2 error: 0.348
+answer accuracy for right with type 2 error: 0.103
+overall quality: 0.667
+answer retrival accuracy for rough right: 0.147
+
