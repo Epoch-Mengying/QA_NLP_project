@@ -1,4 +1,5 @@
-
+.ipynb_checkpoints/
+Untitled.ipynb
 .DS_Store
 baseline_dev_result.csv
 Glove.p

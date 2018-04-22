@@ -119,7 +119,11 @@ def sentence2sequence(sentence, answer = False):
     """
     # sentence = ''.join(c for c in sentence if c not in punctuation)
     # punctuation: '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
-    
+    if answer:
+        if sentence[:2] ==', ':
+            print('&&&',sentence)
+            sentence= sentence[2:]
+
     tokens = sentence.strip('"(),- ').lower().split(" ")  # The characters to be removed from beginning or end of the string.
 
     rows = []
@@ -145,12 +149,26 @@ def sentence2sequence(sentence, answer = False):
 
     # for old Answer module: only use the first word for answer
     if answer:
-
+        char='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
         if len(words)>1:
             words = [words[0]]
             rows = [rows[0]]
-        #if len(words)<1:
-            #print(words)
+
+            if words[0][0] not in char:
+                # print('answer of words:', len(words), words)
+                words = ['UNK']
+                rows[0]=generate_new('UNK')
+                # print('!!!>>', words)
+                # print('!!!>>', rows)
+        elif len(words)<1:
+            print('???>>', len(sentence),sentence)
+            print('???>>', len(words), words)
+            print('len(words)<1. answer of words:', len(words), words)
+            words = ['UNK']
+            rows.append(generate_new('UNK'))
+
+            # print('???>>', rows)
+
 
     return np.array(rows), words
 
@@ -159,7 +177,7 @@ def sentence2sequence(sentence, answer = False):
 # -------------
 # Read in and Prepare data
 # -------------
-def contextualize(set_file, overide = False, is_train = True):
+def contextualize(set_file, overide = True, is_train = True):
     """
     Read in the dataset of questions and build question+answer -> context sets.
     Output is a list of data points, each of which is a 6-element tuple containing:
@@ -197,11 +215,11 @@ def contextualize(set_file, overide = False, is_train = True):
                         question = qa['question']
                         answer = qa['answers'][0]['text']
                         #debug4.7
-                        answer_test = answer.split()[0]
+                        # answer_test = answer.split()[0]
                         # print(j,'answer_test',answer_test)
                     
                         # tuple(zip(*context)) will return a tuple with (contextvs, contextws)
-                        data.append((tuple(zip(*context))+ sentence2sequence(question)+ sentence2sequence(answer_test,True)))
+                        data.append((tuple(zip(*context))+ sentence2sequence(question)+ sentence2sequence(answer,True)))
                 j+=1
                 
                 #if j == 5: break
@@ -243,7 +261,7 @@ def finalize(data):
 
         # Location markers for the beginnings of new sentences.
         sentence_ends = np.array(list(lengths))
-        final_data.append((context_vec, sentence_ends, qvs, context_words, cqas, avs, aws))
+        final_data.append((context_vec, sentence_ends, qvs, context_words, cqas, avs, aws, qws))
         # print('finalize:',type(avs))
 
     return np.array(final_data)
@@ -425,7 +443,7 @@ def attention(c, mem, existing_facts):
         return tf.expand_dims(tf.sparse_tensor_to_dense(tf.sparse_softmax(softmaxable)),-1)
 # facts_0s: a [batch_size, max_facts_length, 1] tensor
 #     whose values are 1 if the corresponding fact exists and 0 if not.
-facts_0s = tf.cast(tf.count_nonzero(input_sentence_endings[:,:,-1:],-1,keep_dims=True),tf.float32)
+facts_0s = tf.cast(tf.count_nonzero(input_sentence_endings[:,:,-1:],-1,keepdims=True),tf.float32)
 
 
 with tf.variable_scope("Episodes") as scope:
@@ -521,7 +539,7 @@ gold_standard = tf.placeholder(tf.float32, [None, None, D], "answer")
 with tf.variable_scope('accuracy'):
     eq = tf.equal(context, gold_standard)
     corrbool = tf.reduce_all(eq,-1)
-    logloc = tf.reduce_max(logits, -1, keep_dims = True)
+    logloc = tf.reduce_max(logits, -1, keepdims = True)
     # locs: A boolean tensor that indicates where the score
     #  matches the minimum score. This happens on multiple dimensions,
     #  so in the off chance there's one or two indexes that match
@@ -576,7 +594,7 @@ def prep_batch(batch_data, more_data = False):
     """
         Prepare all the preproccessing that needs to be done on a batch-by-batch basis.
     """
-    context_vec, sentence_ends, questionvs,  context_words, cqas, answervs, aws = zip(*batch_data)
+    context_vec, sentence_ends, questionvs,  context_words, cqas, answervs, aws, qws = zip(*batch_data)
     ends = list(sentence_ends)
     maxend = max(map(len, ends))
     aends = np.zeros((len(ends), maxend))
@@ -608,7 +626,7 @@ def prep_batch(batch_data, more_data = False):
         queries[i,0:len(question),:] = question
     data = {context_placeholder: final_contexts, input_sentence_endings: new_ends,
                             query:queries, input_query_lengths:querylengths, gold_standard: answervs}
-    return (data, context_words, cqas) if more_data else (data , aws,context_words)
+    return (data, context_words, cqas) if more_data else (data , aws,context_words, qws)
 
 
 # Use TQDM if installed
@@ -647,12 +665,12 @@ def train(iterations, batch_size):
     for j in training_iterations:
         #if j<8320:
         #    continue
-        print('interation(1-10):',j)
+        print('interation:',j/128)
         batch = np.random.randint(final_train_data.shape[0], size=batch_size)
         batch_data = final_train_data[batch]
         k=0
 
-        feed_dict ,aws,context_words= prep_batch(batch_data)
+        feed_dict ,aws,context_words, qws= prep_batch(batch_data)
         feed_dict[gold_standard]= np.asarray(feed_dict[gold_standard])
 
         for key in feed_dict:
@@ -667,15 +685,15 @@ def train(iterations, batch_size):
 
                 for i,array in enumerate(feed_dict[key]):
                     if array.shape[0]!=1:
-                        print(i,aws[i],array)#
+                        print(i,aws[i],len(aws[i]),array)#
                         print("Context>> ", context_words[i])
-                        #print ("Q: ", qws[i])
+                        print ("Q: ", qws[i])
                 # print(aws)
 
 
 
         sess.run([opt_op,], feed_dict=feed_dict)
-        if (j/batch_size) % 10 == 0:#display_step
+        if (j/batch_size) % 100 == 0:#display_step
 
             # Calculate batch accuracy
             acc, ccs, tmp_loss, log, con, cor, loc  = sess.run([corrects, cs, total_loss, logit,
@@ -684,11 +702,13 @@ def train(iterations, batch_size):
             # Display results
             print("Iter " + str(j/batch_size) + ", Minibatch Loss= ",tmp_loss,
                   "Accuracy= ", np.mean(acc))
+            # Save the model
+            save_path = saver.save(sess, "results/model.ckpt")
                   
 
 
 ####### PRELIMINARY RESULTS
-train(300,batch_size) # Small amount of training for preliminary results
+train(12800,batch_size) # Small amount of training for preliminary results
 #
 # ancr = sess.run([corrbool,locs, total_loss, logits, facts_0s, w_1]+attends+
 #                 [query, cs, question_module_outputs],feed_dict=validation_set)
@@ -736,8 +756,8 @@ save_path = saver.save(sess, "results/model.ckpt")
 
 ######## Final testing accuracy
 # TODO: uncomment the sentence below
-re_prep_batch = prep_batch(final_test_data)[0]
-print(np.mean(sess.run([corrects], feed_dict=re_prep_batch)[0]))
+# re_prep_batch = prep_batch(final_test_data)[0]
+print(np.mean(sess.run([corrects], feed_dict=validation_set)[0]))
 
 
 sess.close()
