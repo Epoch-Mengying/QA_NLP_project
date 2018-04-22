@@ -119,10 +119,6 @@ def sentence2sequence(sentence, answer = False):
     """
     # sentence = ''.join(c for c in sentence if c not in punctuation)
     # punctuation: '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
-    if answer:
-        if sentence[:2] ==', ':
-            print('&&&',sentence)
-            sentence= sentence[2:]
 
     tokens = sentence.strip('"(),- ').lower().split(" ")  # The characters to be removed from beginning or end of the string.
 
@@ -149,21 +145,11 @@ def sentence2sequence(sentence, answer = False):
 
     # for old Answer module: only use the first word for answer
     if answer:
-        char='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
         if len(words)>1:
             words = [words[0]]
             rows = [rows[0]]
 
-            if words[0][0] not in char:
-                # print('answer of words:', len(words), words)
-                words = ['UNK']
-                rows[0]=generate_new('UNK')
-                # print('!!!>>', words)
-                # print('!!!>>', rows)
         elif len(words)<1:
-            print('???>>', len(sentence),sentence)
-            print('???>>', len(words), words)
-            print('len(words)<1. answer of words:', len(words), words)
             words = ['UNK']
             rows.append(generate_new('UNK'))
 
@@ -709,42 +695,42 @@ def train(iterations, batch_size):
 
 ####### PRELIMINARY RESULTS
 train(12800,batch_size) # Small amount of training for preliminary results
-#
-# ancr = sess.run([corrbool,locs, total_loss, logits, facts_0s, w_1]+attends+
-#                 [query, cs, question_module_outputs],feed_dict=validation_set)
-# a = ancr[0]
-# n = ancr[1]
-# cr = ancr[2]
-# attenders = np.array(ancr[6:-3])
-# faq = np.sum(ancr[4], axis=(-1,-2)) # Number of facts in each context
-#
-# limit = 5
-# # for question in range(min(limit, batch_size)):
-# #     plt.yticks(range(passes,0,-1))
-# #     plt.ylabel("Episode")
-# #     plt.xlabel("Question "+str(question+1))
-# #     pltdata = attenders[:,question,:int(faq[question]),0]
-# #     # Display only information about facts that actually exist, all others are 0
-# #     pltdata = (pltdata - pltdata.mean()) / ((pltdata.max() - pltdata.min() + 0.001)) * 256
-# #     plt.pcolor(pltdata, cmap=plt.cm.BuGn, alpha=0.7)
-# #     plt.show()
-#
-# #print(list(map((lambda x: x.shape),ancr[3:])), new_ends.shape)
-#
-#
-# # Locations of responses within contexts
-# indices = np.argmax(n,axis=1)
-#
-# # Locations of actual answers within contexts
-# indicesc = np.argmax(a,axis=1)
-#
-# for i,e,cw, cqa in list(zip(indices, indicesc, val_context_words, val_cqas))[:limit]:
-#     ccc = " ".join(cw)
-#     print("TEXT: ",ccc)
-#     print ("QUESTION: ", " ".join(cqa[3]))
-#     print ("RESPONSE: ", cw[i], ["Correct", "Incorrect"][i!=e])
-#     print("EXPECTED: ", cw[e])
-#     print()
+
+ancr = sess.run([corrbool,locs, total_loss, logits, facts_0s, w_1]+attends+
+                [query, cs, question_module_outputs],feed_dict=validation_set)
+a = ancr[0]
+n = ancr[1]
+cr = ancr[2]
+attenders = np.array(ancr[6:-3])
+faq = np.sum(ancr[4], axis=(-1,-2)) # Number of facts in each context
+
+limit = 5
+# for question in range(min(limit, batch_size)):
+#     plt.yticks(range(passes,0,-1))
+#     plt.ylabel("Episode")
+#     plt.xlabel("Question "+str(question+1))
+#     pltdata = attenders[:,question,:int(faq[question]),0]
+#     # Display only information about facts that actually exist, all others are 0
+#     pltdata = (pltdata - pltdata.mean()) / ((pltdata.max() - pltdata.min() + 0.001)) * 256
+#     plt.pcolor(pltdata, cmap=plt.cm.BuGn, alpha=0.7)
+#     plt.show()
+
+#print(list(map((lambda x: x.shape),ancr[3:])), new_ends.shape)
+
+
+# Locations of responses within contexts
+indices = np.argmax(n,axis=1)
+
+# Locations of actual answers within contexts
+indicesc = np.argmax(a,axis=1)
+
+for i,e,cw, cqa in list(zip(indices, indicesc, val_context_words, val_cqas))[:limit]:
+    ccc = " ".join(cw)
+    print("TEXT: ",ccc)
+    print ("QUESTION: ", " ".join(cqa[3]))
+    print ("RESPONSE: ", cw[i], ["Correct", "Incorrect"][i!=e])
+    print("EXPECTED: ", cw[e])
+    print()
 
 
 ######## REAL TRAINING
