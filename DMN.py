@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
-#import matplotlib.pyplot as plt
-#import matplotlib.ticker as ticker
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import urllib
 import sys
 import os
@@ -41,11 +41,11 @@ np.random.seed(2018)
 #train_file = '/Users/G_bgyl/si630/project/train-v1.1.json'
 #test_file = '/Users/G_bgyl/si630/project/dev-v1.1.json'
 
-#train_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json'
-#test_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/dev-v1.1.json'
+train_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/train-v1.1.json'
+test_file = '/Users/Mengying/Desktop/SI630 NLP/FinalProject/Data/dev-v1.1.json'
 
-train_file = 'DATA/train-v1.1.json'
-test_file = 'DATA/dev-v1.1.json'
+#train_file = 'DATA/train-v1.1.json'
+#test_file = 'DATA/dev-v1.1.json'
 
 
 # -------------
@@ -77,8 +77,8 @@ def load_Glove(glove_vectors_file, overide=True):
 glove_wordmap = {}
 
 #glove_wordmap = load_Glove("/Users/G_bgyl/si630/project/Neural_Network/glove.6B/glove.6B.50d.txt")
-#glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.50d.txt")
-glove_wordmap = load_Glove("DATA/glove.6B.50d.txt")
+glove_wordmap = load_Glove("/Users/Mengying/Desktop/SI630 NLP/FinalProject/glove.6B/glove.6B.100d.txt")
+#glove_wordmap = load_Glove("DATA/glove.6B.100d.txt")
 
 wvecs = []
 for item in glove_wordmap.items():
@@ -212,10 +212,10 @@ def contextualize(set_file, overide = True, is_train = True):
                 #break  #only load one article
 
         # save it in pickle to re-use next time
-        if is_train:
-            pickle.dump(data, open("DATA/Train1.p", "wb+"))
-        else:
-            pickle.dump(data, open("DATA/Test1.p", "wb+"))
+        #if is_train:
+            #pickle.dump(data, open("DATA/Train1.p", "wb+"))
+        #else:
+            #pickle.dump(data, open("DATA/Test1.p", "wb+"))
         
         return data
 
@@ -269,7 +269,7 @@ tf.reset_default_graph()
 recurrent_cell_size = 128
 
 # The number of dimensions in our word vectorizations.
-D = 50
+D = 100
 
 # How quickly the network learns. Too high, and we may run into numeric instability
 # or other issues.
@@ -277,7 +277,7 @@ learning_rate = 0.005
 
 # Dropout probabilities. For a description of dropout and what these probabilities are,
 # see Entailment with TensorFlow.
-input_p, output_p = 0.5, 0.5
+input_p, output_p = 0.3, 0.3
 
 # How many questions we train on at a time.
 batch_size = 128
@@ -570,10 +570,12 @@ init = tf.global_variables_initializer()
 # Save the model
 saver = tf.train.Saver()
 
+
+
 # Launch the TensorFlow session
 sess = tf.Session()
 sess.run(init)
-
+saver.restore(sess, "results100/model.ckpt")
 
 
 def prep_batch(batch_data, more_data = False):
@@ -694,7 +696,7 @@ def train(iterations, batch_size):
 
 
 ####### PRELIMINARY RESULTS
-train(12800,batch_size) # Small amount of training for preliminary results
+#train(12800,batch_size) # Small amount of training for preliminary results
 
 ancr = sess.run([corrbool,locs, total_loss, logits, facts_0s, w_1]+attends+
                 [query, cs, question_module_outputs],feed_dict=validation_set)
@@ -705,17 +707,17 @@ attenders = np.array(ancr[6:-3])
 faq = np.sum(ancr[4], axis=(-1,-2)) # Number of facts in each context
 
 limit = 5
-# for question in range(min(limit, batch_size)):
-#     plt.yticks(range(passes,0,-1))
-#     plt.ylabel("Episode")
-#     plt.xlabel("Question "+str(question+1))
-#     pltdata = attenders[:,question,:int(faq[question]),0]
-#     # Display only information about facts that actually exist, all others are 0
-#     pltdata = (pltdata - pltdata.mean()) / ((pltdata.max() - pltdata.min() + 0.001)) * 256
-#     plt.pcolor(pltdata, cmap=plt.cm.BuGn, alpha=0.7)
-#     plt.show()
+for question in range(min(limit, batch_size)):
+    plt.yticks(range(passes,0,-1))
+    plt.ylabel("Episode")
+    plt.xlabel("Question "+str(question+1))
+    pltdata = attenders[:,question,:int(faq[question]),0]
+    # Display only information about facts that actually exist, all others are 0
+    pltdata = (pltdata - pltdata.mean()) / ((pltdata.max() - pltdata.min() + 0.001)) * 256
+    plt.pcolor(pltdata, cmap=plt.cm.BuGn, alpha=0.7)
+    plt.show()
 
-#print(list(map((lambda x: x.shape),ancr[3:])), new_ends.shape)
+print(list(map((lambda x: x.shape),ancr[3:])), new_ends.shape)
 
 
 # Locations of responses within contexts
@@ -737,13 +739,13 @@ for i,e,cw, cqa in list(zip(indices, indicesc, val_context_words, val_cqas))[:li
 #train(training_iterations_count, batch_size)
 
 # Save the model
-save_path = saver.save(sess, "results/model.ckpt")
+#save_path = saver.save(sess, "results100/model.ckpt")
 
 
 ######## Final testing accuracy
 # TODO: uncomment the sentence below
 # re_prep_batch = prep_batch(final_test_data)[0]
-print(np.mean(sess.run([corrects], feed_dict=validation_set)[0]))
+#print(np.mean(sess.run([corrects], feed_dict=validation_set)[0]))
 
 
 sess.close()
